@@ -1,0 +1,5 @@
+=> no checkpoint found at 'True'
+Starting training loop for rank: 0, total batch size: 8
+=> loading checkpoint '/home/dz/Projects/multi-modal_AR/causal_original/checkpoint/whl/epoch0039.pth.tar'
+=> loaded checkpoint '/home/dz/Projects/multi-modal_AR/causal_original/checkpoint/whl/epoch0039.pth.tar' (epoch 39)0
+Starting training loop for rank: 0, total batch size: 8
