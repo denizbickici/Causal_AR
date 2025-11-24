@@ -63,6 +63,13 @@ class Trainer(nn.Module):
 		self.register_buffer('base_dist_mean', torch.zeros(z_dim).cuda())
 		self.register_buffer('base_dist_var', torch.eye(z_dim).cuda())
 		self.optimizer = None
+
+	def _raise_if_nonfinite(self, name, tensor):
+		if not torch.isfinite(tensor).all():
+			nan_count = torch.isnan(tensor).sum().item()
+			inf_count = torch.isinf(tensor).sum().item()
+			msg = f"{name} has non-finite values (nan={nan_count}, inf={inf_count}); min={tensor.nanmin().item():.4e}, max={tensor.nanmax().item():.4e}"
+			raise RuntimeError(msg)
 		
 	@property
 	def base_dist(self):
@@ -134,7 +141,14 @@ class Trainer(nn.Module):
 			batch_size, length, _ = verb_feat.shape	
 			verb_x_recon, verb_mus, verb_logvars, verb_z_est = self.verb_net(verb_feat)
 			noun_x_recon, noun_mus, noun_logvars, noun_z_est = self.noun_net(noun_feat)
+			self._raise_if_nonfinite("verb_mus", verb_mus)
+			self._raise_if_nonfinite("verb_logvars", verb_logvars)
+			self._raise_if_nonfinite("verb_z_est", verb_z_est)
+			self._raise_if_nonfinite("noun_mus", noun_mus)
+			self._raise_if_nonfinite("noun_logvars", noun_logvars)
+			self._raise_if_nonfinite("noun_z_est", noun_z_est)
 			act_u = self.domain_enc_act(act_feat)
+			self._raise_if_nonfinite("act_u", act_u)
 			#print(verb_mus, verb_logvars)
 
 			verb_recon_loss = self.reconstruction_loss(verb_feat[:, :self.lags], verb_x_recon[:, :self.lags]) + (self.reconstruction_loss(verb_feat[:, self.lags:], verb_x_recon[:, self.lags:]))/(length-self.lags)
@@ -235,7 +249,14 @@ class Trainer(nn.Module):
 				batch_size, length, _ = verb_feat[:,i,:,:].shape	
 				verb_x_recon, verb_mus, verb_logvars, verb_z_est = self.verb_net(verb_feat[:,i,:,:])
 				noun_x_recon, noun_mus, noun_logvars, noun_z_est = self.noun_net(noun_feat[:,i,:,:])
+				self._raise_if_nonfinite("verb_mus", verb_mus)
+				self._raise_if_nonfinite("verb_logvars", verb_logvars)
+				self._raise_if_nonfinite("verb_z_est", verb_z_est)
+				self._raise_if_nonfinite("noun_mus", noun_mus)
+				self._raise_if_nonfinite("noun_logvars", noun_logvars)
+				self._raise_if_nonfinite("noun_z_est", noun_z_est)
 				act_u = self.domain_enc_act(act_feat[:,i,:,:])
+				self._raise_if_nonfinite("act_u", act_u)
 
 						
 				# recon_loss = self.reconstruction_loss(x, x_recon)

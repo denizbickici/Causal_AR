@@ -215,6 +215,14 @@ class NPTransitionPrior(nn.Module):
         residuals = torch.cat(residuals, dim=-1)
         residuals = residuals.reshape(batch_size, length, x_dim)
         log_abs_det_jacobian = sum_log_abs_det_jacobian.reshape(batch_size, length)
+        if not torch.isfinite(residuals).all():
+            nan_count = torch.isnan(residuals).sum().item()
+            inf_count = torch.isinf(residuals).sum().item()
+            raise RuntimeError(f"NPChangeTransitionPrior residuals non-finite (nan={nan_count}, inf={inf_count})")
+        if not torch.isfinite(log_abs_det_jacobian).all():
+            nan_count = torch.isnan(log_abs_det_jacobian).sum().item()
+            inf_count = torch.isinf(log_abs_det_jacobian).sum().item()
+            raise RuntimeError(f"NPChangeTransitionPrior log_abs_det_jacobian non-finite (nan={nan_count}, inf={inf_count})")
         return residuals, log_abs_det_jacobian
 
 class NPChangeTransitionPrior(nn.Module):
