@@ -152,9 +152,14 @@ class BetaVAE_MLP(nn.Module):
         distributions = self._encode(x)
         mu = distributions[:,:, :self.z_dim]
         logvar = distributions[:,:, self.z_dim:]
+        # stabilize
+        mu = torch.nan_to_num(mu)
+        logvar = torch.clamp(logvar, min=-30.0, max=20.0)
+        logvar = torch.nan_to_num(logvar)
         #mu = torch.clamp(mu, max=1e6)
         #print(torch.max(logvar), torch.min(logvar), torch.max(mu), torch.min(mu))
         z = reparametrize(mu, logvar)
+        z = torch.nan_to_num(z)
         x_recon = self._decode(z)
 
         if return_z:

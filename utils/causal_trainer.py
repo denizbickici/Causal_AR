@@ -68,7 +68,13 @@ class Trainer(nn.Module):
 		if not torch.isfinite(tensor).all():
 			nan_count = torch.isnan(tensor).sum().item()
 			inf_count = torch.isinf(tensor).sum().item()
-			msg = f"{name} has non-finite values (nan={nan_count}, inf={inf_count}); min={tensor.nanmin().item():.4e}, max={tensor.nanmax().item():.4e}"
+			finite_vals = tensor[torch.isfinite(tensor)]
+			if finite_vals.numel() > 0:
+				min_val = finite_vals.min().item()
+				max_val = finite_vals.max().item()
+			else:
+				min_val, max_val = float('nan'), float('nan')
+			msg = f"{name} has non-finite values (nan={nan_count}, inf={inf_count}); min={min_val:.4e}, max={max_val:.4e}"
 			raise RuntimeError(msg)
 		
 	@property
