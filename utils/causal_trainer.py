@@ -115,7 +115,8 @@ class Trainer(nn.Module):
 		# Future KLD
 		log_qz_laplace = log_qz[:, self.lags:]
 		residuals, logabsdet = transition_prior(z_est, domain_feat)
-
+		residuals = torch.nan_to_num(residuals, nan=0.0, posinf=1e4, neginf=-1e4)
+		logabsdet = torch.nan_to_num(logabsdet, nan=0.0, posinf=1e4, neginf=-1e4)
 		log_pz_laplace = torch.sum(self.base_dist.log_prob(residuals), dim=1).cuda() + logabsdet.cuda().sum(dim=1)
 		log_pz_laplace = log_pz_laplace.cuda()
 		if recon_loss>0:
