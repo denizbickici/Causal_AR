@@ -145,6 +145,11 @@ class Trainer(nn.Module):
 		for batch in self.train_loader:
 			verb_feat, noun_feat, verb_label, noun_label, labels, action_logits, act_feat, spatial_verb_feat_cls, spatial_noun_feat_cls, spatial_act_feat_cls = batch[0].cuda(), batch[1].cuda(), batch[2].cuda(), batch[3].cuda(), batch[4].cuda(), batch[5].cuda(), batch[6].cuda(), batch[7].cuda(), batch[8].cuda(), batch[9].cuda()			
 						
+			# sanitize action features before passing to domain encoder
+			act_feat = torch.nan_to_num(act_feat, nan=0.0, posinf=1e4, neginf=-1e4)
+			act_feat = torch.clamp(act_feat, min=-1e3, max=1e3)
+			self._raise_if_nonfinite("act_feat", act_feat)
+
 			batch_size, length, _ = verb_feat.shape	
 			verb_x_recon, verb_mus, verb_logvars, verb_z_est = self.verb_net(verb_feat)
 			noun_x_recon, noun_mus, noun_logvars, noun_z_est = self.noun_net(noun_feat)
@@ -155,6 +160,8 @@ class Trainer(nn.Module):
 			self._raise_if_nonfinite("noun_logvars", noun_logvars)
 			self._raise_if_nonfinite("noun_z_est", noun_z_est)
 			act_u = self.domain_enc_act(act_feat)
+			act_u = torch.nan_to_num(act_u, nan=0.0, posinf=1e4, neginf=-1e4)
+			act_u = torch.clamp(act_u, min=-1e3, max=1e3)
 			self._raise_if_nonfinite("act_u", act_u)
 			#print(verb_mus, verb_logvars)
 
@@ -241,6 +248,8 @@ class Trainer(nn.Module):
 			'''act_feat = act_feat[:,:,::2,:]
 			verb_feat = verb_feat[:,:,::2,:]
 			noun_feat = noun_feat[:,:,::2,:]'''
+			act_feat = torch.nan_to_num(act_feat, nan=0.0, posinf=1e4, neginf=-1e4)
+			act_feat = torch.clamp(act_feat, min=-1e3, max=1e3)
 			'''verb_feat = verb_feat[:,:,:8,:]
 			noun_feat = noun_feat[:,:,:8,:]'''
 			
@@ -263,6 +272,8 @@ class Trainer(nn.Module):
 				self._raise_if_nonfinite("noun_logvars", noun_logvars)
 				self._raise_if_nonfinite("noun_z_est", noun_z_est)
 				act_u = self.domain_enc_act(act_feat[:,i,:,:])
+				act_u = torch.nan_to_num(act_u, nan=0.0, posinf=1e4, neginf=-1e4)
+				act_u = torch.clamp(act_u, min=-1e3, max=1e3)
 				self._raise_if_nonfinite("act_u", act_u)
 
 						
