@@ -63,6 +63,7 @@ class Trainer(nn.Module):
 		self.register_buffer('base_dist_mean', torch.zeros(z_dim).cuda())
 		self.register_buffer('base_dist_var', torch.eye(z_dim).cuda())
 		self.optimizer = None
+		self._warned_action_logits = False
 
 	def _raise_if_nonfinite(self, name, tensor):
 		if not torch.isfinite(tensor).all():
@@ -76,6 +77,32 @@ class Trainer(nn.Module):
 				min_val, max_val = float('nan'), float('nan')
 			msg = f"{name} has non-finite values (nan={nan_count}, inf={inf_count}); min={min_val:.4e}, max={max_val:.4e}"
 			raise RuntimeError(msg)
+
+	def _prepare_action_logits(self, action_logits):
+		"""
+		Reduce/reshape action logits to shape [B, action_dim] if possible.
+		Returns None if dimensions do not match; caller should skip combining.
+		"""
+		if action_logits is None:
+			return None
+		logits = action_logits
+		# If logits have a crops/temporal dim, average it out
+		if logits.dim() > 2:
+			logits = logits.mean(dim=1)
+		# Squeeze singleton crop dim
+		if logits.dim() == 3 and logits.shape[1] == 1:
+			logits = logits.squeeze(1)
+		# Ensure 2D [B, C]
+		if logits.dim() == 1:
+			logits = logits.unsqueeze(0)
+		if logits.dim() != 2:
+			return None
+		if logits.shape[1] != self.action_dim:
+			if not self._warned_action_logits:
+				print(f"[warn] action_logits last dim {logits.shape[1]} != action_dim {self.action_dim}; skipping fusion.")
+				self._warned_action_logits = True
+			return None
+		return logits
 		
 	@property
 	def base_dist(self):
@@ -182,7 +209,9 @@ class Trainer(nn.Module):
 			#print(verb_z_est, noun_z_est)
 			if not self.pretrain_vae:
 				pred = self.cls_net(torch.cat((verb_z_est, noun_z_est), dim=2).view(batch_size,-1))
-				pred = pred + action_logits.squeeze(1) # final prediction is a combination of lavila logits and causal logits
+				act_logits = self._prepare_action_logits(action_logits)
+				if act_logits is not None:
+					pred = pred + act_logits # final prediction is a combination of lavila logits and causal logits
 				class_loss = self.criterion(pred, labels)
 
 			# VAE training
@@ -309,8 +338,11 @@ class Trainer(nn.Module):
 			if not self.pretrain_vae:
 				preds = torch.cat(preds, dim=1)
 				preds = torch.mean(preds, dim=1)
-				pred = preds + torch.mean(action_logits, dim=1)
-				#pred = preds 
+				act_logits = self._prepare_action_logits(action_logits)
+				if act_logits is not None:
+					pred = preds + act_logits
+				else:
+					pred = preds 
 			
 				(acc1, acc5) = accuracy(pred.cpu(), labels.cpu(), topk=(1, 5),)
 				acc_top1.update(acc1.item(), batch_size)
