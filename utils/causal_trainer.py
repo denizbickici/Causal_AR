@@ -140,10 +140,12 @@ class Trainer(nn.Module):
 			verb_recon_loss = self.reconstruction_loss(verb_feat[:, :self.lags], verb_x_recon[:, :self.lags]) + (self.reconstruction_loss(verb_feat[:, self.lags:], verb_x_recon[:, self.lags:]))/(length-self.lags)
 			noun_recon_loss = self.reconstruction_loss(noun_feat[:, :self.lags], noun_x_recon[:, :self.lags]) + (self.reconstruction_loss(noun_feat[:, self.lags:], noun_x_recon[:, self.lags:]))/(length-self.lags)
 
-			verb_q_dist = D.Normal(verb_mus, torch.exp(verb_logvars / 2))
+			verb_std = torch.exp(verb_logvars / 2).clamp_min(1e-6)
+			verb_q_dist = D.Normal(verb_mus, verb_std)
 			verb_log_qz = verb_q_dist.log_prob(verb_z_est)
 			
-			noun_q_dist = D.Normal(noun_mus, torch.exp(noun_logvars / 2))
+			noun_std = torch.exp(noun_logvars / 2).clamp_min(1e-6)
+			noun_q_dist = D.Normal(noun_mus, noun_std)
 			noun_log_qz = noun_q_dist.log_prob(noun_z_est)
 
 			kld_normal_verb, kld_laplace_verb = self.kld(verb_mus, verb_logvars, verb_z_est, act_u, self.transition_prior_verb, verb_log_qz, verb_recon_loss, length)
@@ -244,10 +246,12 @@ class Trainer(nn.Module):
 					pred = self.cls_net(torch.cat((verb_z_est, noun_z_est), dim=2).view(batch_size,-1))
 					preds.append(pred.unsqueeze(1))
 				
-				verb_q_dist = D.Normal(verb_mus, torch.exp(verb_logvars / 2))
+				verb_std = torch.exp(verb_logvars / 2).clamp_min(1e-6)
+				verb_q_dist = D.Normal(verb_mus, verb_std)
 				verb_log_qz = verb_q_dist.log_prob(verb_z_est)
 				
-				noun_q_dist = D.Normal(noun_mus, torch.exp(noun_logvars / 2))
+				noun_std = torch.exp(noun_logvars / 2).clamp_min(1e-6)
+				noun_q_dist = D.Normal(noun_mus, noun_std)
 				noun_log_qz = noun_q_dist.log_prob(noun_z_est)
 				
 				kld_normal_verb, kld_laplace_verb = self.kld(verb_mus, verb_logvars, verb_z_est, act_u, self.transition_prior_verb, verb_log_qz, verb_recon_loss, length)
