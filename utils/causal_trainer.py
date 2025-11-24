@@ -252,6 +252,11 @@ class Trainer(nn.Module):
 			act_feat = torch.clamp(act_feat, min=-1e3, max=1e3)
 			'''verb_feat = verb_feat[:,:,:8,:]
 			noun_feat = noun_feat[:,:,:8,:]'''
+
+			# Ensure action features have a crop dimension to align with verb/noun loops
+			if act_feat.dim() == 3:
+				# (B, T, D) -> (B, num_crops, T, D)
+				act_feat = act_feat.unsqueeze(1).expand(-1, verb_feat.shape[1], -1, -1)
 			
 
 			#verb_feat = torch.cat((spatial_verb_feat_cls.unsqueeze(2), verb_feat), dim=2)
